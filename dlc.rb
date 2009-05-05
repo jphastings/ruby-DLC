@@ -1,7 +1,10 @@
 # = The DLC API in ruby!
 # Visit http://jdownloader.org for more information on why this might be useful!
 #
-# My thanks go out to the JDownloader staff for making such an excellent application. I've spoken with them and this script is now available for download at http://projects.kedakai.co.uk/rubydlc/dlc.rb I hope you enjoy it.
+# My thanks go out to the JDownloader staff for making such an excellent application! I've spoken with them and this script is now available for download at the github page (http://github.com/jphastings/ruby-DLC) or you can install the gem with:
+#   gem sources -a http://gems.github.com
+#   sudo gem install jphastings-dlc
+#
 # == How to Use
 # You can use this library from the irb, or in any script you like. Examples below are for irb, I'm sure people using this as a 
 # library will be able to figure out how to use it in that way.
@@ -56,6 +59,10 @@
 #
 # This will ensure the file gets closed after you've written your DLC to it.
 #
+# == Problems?
+# Found a bug? Leave me an issue report on the githib page: http://github.com/jphastings/ruby-DLC/issues - 
+# I'll get onto it as soon as I can and see if I can fix it.
+#
 # == More Information
 # I'm JP, you can find my things at http://kedakai.co.uk. Any questions can be sent to me via twitter: @jphastings.
 #
@@ -98,7 +105,7 @@ module DLC
     attr_accessor :email,:name,:url
     
     # I may allow this to be changed in later versions
-    Settings = "settings.yml"
+    Settings = "dlc_settings.yml"
     
     def initialize
       if File.exists? Settings
