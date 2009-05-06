@@ -1,6 +1,6 @@
 spec = Gem::Specification.new do |s| 
   s.name = "dlc"
-  s.version = "1.0.1"
+  s.version = "1.0.2"
   s.author = "JP Hastings-Spital"
   s.email = "rubydlc@projects.kedakai.co.uk"
   s.homepage = "http://projects.kedakai.co.uk/rubydlc/"
@@ -10,6 +10,5 @@ spec = Gem::Specification.new do |s|
   s.files = ["dlc.rb"]
   s.require_paths = ["."]
   s.add_dependency("builder")
-  s.add_dependency("ruby-aes")
   s.has_rdoc = true
 end
