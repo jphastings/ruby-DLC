@@ -222,6 +222,8 @@ module DLC
       return false
     end
     
+    alias :add_links :add_link
+    
     # Adds a password to the package
     # Also accepts an array of passwords
     def add_password(password)
@@ -238,6 +240,8 @@ module DLC
       $stderr.puts "Invalid password: #{password}"
       return false
     end
+    
+    alias :add_passwords :add_password
     
     # Gives you the DLC of the package you've created. First run (every hour) will take longer than the others while
     # the jdownloader service is queried for information.
