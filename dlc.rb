@@ -185,7 +185,7 @@ module DLC
     private
     def write_settings
       open(Settings,"w") do |f|
-        p @keycache
+        #p @keycache
         f.write YAML.dump({:name => @name, :email => @email, :url => @url,:keycache => @keycache})
       end
     end

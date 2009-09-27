@@ -1,6 +1,6 @@
 spec = Gem::Specification.new do |s| 
   s.name = "dlc"
-  s.version = "1.0.3"
+  s.version = "1.0.4"
   s.author = "JP Hastings-Spital"
   s.email = "rubydlc@projects.kedakai.co.uk"
   s.homepage = "http://projects.kedakai.co.uk/rubydlc/"
