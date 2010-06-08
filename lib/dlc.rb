@@ -1,60 +1,48 @@
 # = The DLC API in ruby!
 # Visit http://jdownloader.org for more information on why this might be useful!
 #
-# My thanks go out to the JDownloader staff for making such an excellent application! I've spoken with them and this script is now available for download at the github page (http://github.com/jphastings/ruby-DLC) or you can install the gem with:
-#   gem sources -a http://gems.github.com
-#   sudo gem install jphastings-dlc
+# My thanks go out to the JDownloader staff for making such an excellent application! I've spoken with them and this script is now available for download at the github page (http://github.com/jphastings/ruby-DLC) or you can install the gem with the usual:
+#   gem install dlc
 #
 # == How to Use
 # You can use this library from the irb, or in any script you like. Examples below are for irb, I'm sure people using this as a 
 # library will be able to figure out how to use it in that way.
+#
 # === Set Up
 # You'll need to set the settings file before you do anything else. Open up irb in the directory where this file is located:
-#   >> require 'dlc'
-#   => true
-#   >> s = DLC::Settings.new
-#   No settings file exists. You should set them with the follwing in irb:
-#    require 'dlc'
-#    s = DLC::Settings.new
-#    s.name = "Your Name"
-#    s.url = "http://yourdomain.com"
-#    s.email = "your.name@yourdomain.com"
-#   You need to specify a name, url and email for the DLC generator. See the documentation
-#   => 
-#   >> s.name = "Your Name"
-#   => "Your Name"
-#   >> s.url = "http://your.domain.com"
-#   => "http://your.domain.com"
-#   >> s.email = "your.name@your.domain.com"
-#   => "your.name@your.domain.com"
+#   require 'dlc'
+#   # => true
+#   s = DLC::Settings.new
+#   # No settings file exists.
+#   s.name = "Your Name"
+#   s.url = "http://yourdomain.com"
+#   s.email = "your.name@yourdomain.com"
 #
 # Now your settings file has been created you can go about making DLCs!
 #
 # === Creating a Package and DLC
 # The following irb example shows the variety of options you have while creating a package
-#   >> p = DLC::Package.new
-#   => Unnamed package (0 links, 0 passwords)
-#   >> p.name = "My Package"
-#   => "My Package"
-#   >> p.comment = "An exciting package!"
-#   => "An exciting package!"
-#   >> p.category = "Nothing useful"
-#   => "Nothing useful"
-#   >> p.add_link("http://google.com/")
-#   => true
-#   >> p.add_link(["http://bbc.co.uk","http://slashdot.org"])
-#   => true
-#   >> p.add_password("I don't really need one of these")
-#   => true
-#   >> p p
-#   "My Package" (3 links, 1 passwords)
-#    # An exciting package!
-#   => nil
-#   >> p.dlc
+#   pkg = DLC::Package.new
+#   # => Unnamed package (0 links, 0 passwords)
+#   pkg.name = "My Package"
+#   # => "My Package"
+#   pkg.comment = "An exciting package!"
+#   # => "An exciting package!"
+#   pkg.category = "Nothing useful"
+#   # => "Nothing useful"
+#   pkg.add_link("http://google.com/")
+#   # => true
+#   pkg.add_link(["http://bbc.co.uk","http://slashdot.org"])
+#   # => true
+#   pkg.add_password("I don't really need one of these")
+#   # => true
+#   pkg
+#   # "My Package" (3 links, 1 passwords)
+#   # # An exciting package!
 #
-# That final command will give you the string for your DLC. If you want to put it into a file you should do:
+# If you want to put the DLC data into a file you should do:
 #   open("my_dlc.dlc","w") do |f|
-#     f.write p.dlc
+#     f.write pkg.dlc
 #   end
 #
 # This will ensure the file gets closed after you've written your DLC to it.
@@ -64,7 +52,7 @@
 # I'll get onto it as soon as I can and see if I can fix it.
 #
 # == More Information
-# I'm JP, you can find my things at http://kedakai.co.uk. Any questions can be sent to me via twitter: @jphastings.
+# I'm JP, you can find my things at http://byJP.me. Any questions can be sent to me via twitter: @jphastings.
 #
 # I did this entirely for fun, please take that into account if/when you ask for help or before you get in touch. If you have any code improvements
 # please do let me know! I hope you enjoy this!
@@ -100,7 +88,6 @@ module DLC
   #   s.name = "Your name"
   #   s.email = "you@yourdomain.com"
   #   s.url = "http://yourdomain.com/why_i_use_dlc.html"
-  #   p s
   class Settings
     attr_accessor :email,:name,:url
     
@@ -177,15 +164,14 @@ module DLC
     def inspect
       if @name.nil? or @email.nil? or @url.nil?
         $stderr.puts "You need to specify a name, url and email for the DLC generator. See the documentation"
-        return nil
+      else
+        "DLC API owner: #{@name} <#{@email}> (#{@url})"
       end
-      "DLC API owner: #{@name} <#{@email}> (#{@url})"
     end
     
     private
     def write_settings
       open(Settings,"w") do |f|
-        #p @keycache
         f.write YAML.dump({:name => @name, :email => @email, :url => @url,:keycache => @keycache})
       end
     end
@@ -212,14 +198,13 @@ module DLC
         url.each do |u|
           self.add_link(u)
         end
-        return true
+        return @links
       end
       if url.is_a?(String) and url =~ /^http(s)?\:\/\//
         @links.push({:url=>url,:filename=>nil,:size=>0})
-        return true
+        return @links
       end
-      $stderr.puts "Invalid URL: #{url}"
-      return false
+      raise RuntimeError, "Invalid URL: #{url}"
     end
     
     alias :add_links :add_link
@@ -231,14 +216,13 @@ module DLC
         password.each do |p|
           self.add_password(p)
         end
-        return true
+        return @passwords
       end
       if password.is_a?(String)
         @passwords.push(password)
-        return true
+        return @passwords
       end
-      $stderr.puts "Invalid password: #{password}"
-      return false
+      raise RuntimeError, "Invalid password: #{password}"
     end
     
     alias :add_passwords :add_password
@@ -252,34 +236,34 @@ module DLC
       end
       
       xml = Builder::XmlMarkup.new(:indent=>0)
-      xml.dlc {
-        xml.header {
-          xml.generator {
+      xml.dlc do
+        xml.header do
+          xml.generator do
             xml.app(DLC.encode("Ruby DLC API (kedakai)"))
             xml.version(DLC.encode(DLC::Api[:version]))
             xml.url(DLC.encode(settings.url))
-          }
-          xml.tribute {
+          end
+          xml.tribute do
             xml.name(DLC.encode(settings.name))
-          }
+          end
           xml.dlcxmlversion(DLC.encode('20_02_2008'))
-        }
-        xml.content {
+        end
+        xml.content do
           package = {:name => DLC.encode(@name)}
           package[:passwords] = DLC.encode(@passwords.collect{|pw| "\"#{pw}\""}.join(",")) if @passwords.length != 0
           package[:comment] = DLC.encode(@comment) if @comment != ""
           package[:category] = DLC.encode(@category) if @category != ""
-          xml.package(package) {
+          xml.package(package) do
             @links.each do |link|
-              xml.file {
+              xml.file do
                 xml.url(DLC.encode(link[:url]))
                 xml.filename(DLC.encode(link[:filename]))
                 xml.size(DLC.encode(link[:size]))
-              }
+              end
             end
-          }
-        }
-      }
+          end
+        end
+      end
       
       # Lets get a key/encoded key pair
       begin
@@ -322,7 +306,7 @@ module DLC
   class NoGeneratorDetailsError < StandardError; end
   # For when the keycache is accessed and no valid key is available
   class NoKeyCachedError < StandardError; end
-  # For when the service is not responding in the expectde manner
+  # For when the service is not responding in the expected manner
   class ServerNotRespondingError < StandardError; end  
   
   private
