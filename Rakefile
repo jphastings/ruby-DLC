@@ -11,6 +11,7 @@ begin
     gem.homepage = "http://github.com/jphastings/ruby-DLC"
     gem.authors = ["JP Hastings-Spital"]
     gem.add_dependency "builder"
+    gem.add_dependency "ruby-aes-normal"
   end
   Jeweler::GemcutterTasks.new
 rescue LoadError
