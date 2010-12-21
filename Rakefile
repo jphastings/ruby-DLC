@@ -10,7 +10,6 @@ begin
     gem.email = "jphastings@gmail.com"
     gem.homepage = "http://github.com/jphastings/ruby-DLC"
     gem.authors = ["JP Hastings-Spital"]
-    gem.add_dependency "openssl"
   end
   Jeweler::GemcutterTasks.new
 rescue LoadError
