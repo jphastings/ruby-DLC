@@ -62,14 +62,12 @@ require 'time'
 require 'net/http'
 require 'digest/md5'
 
-require 'rubygems'
-require 'builder'
-require 'ruby-aes'
+require 'openssl'
 
 # A hack to make the AES module accept string keys when they look like hex!
-def Aes.check_iv(iv)
-  return iv
-end
+#def Aes.check_iv(iv)
+#  return iv
+#end
 
 # The DLC module, this is the container for the Settings and Package classes. It also contains some private helper functions
 module DLC
@@ -189,6 +187,13 @@ module DLC
       @category = "various"
       @comment = ""
     end
+    
+    # Experimental reading of DLC files
+    def load(dlc)
+      dlc = open(dlc).read if !dlc.is_a? String
+      
+      
+    end
       
     # Adds a link to the package
     # Will take an array of links too
@@ -201,7 +206,12 @@ module DLC
         return @links
       end
       if url.is_a?(String) and url =~ /^http(s)?\:\/\//
-        @links.push({:url=>url,:filename=>nil,:size=>0})
+        response = nil
+        uri = URI.parse(url)
+        Net::HTTP.start(uri.host, uri.port) {|http|
+          response = http.head(uri.path)
+        }
+        @links.push({:url=>url,:filename=>File.basename(uri.path),:size=>response['content-length'].to_i})
         return @links
       end
       raise RuntimeError, "Invalid URL: #{url}"
@@ -231,39 +241,28 @@ module DLC
     # the jdownloader service is queried for information.
     def dlc
       settings = DLC::Settings.new
-      if settings.inspect.nil?
+      if settings.nil?
         raise NoGeneratorDetailsError, "You must enter a name, url and email for the generator. See the documentation."
       end
       
-      xml = Builder::XmlMarkup.new(:indent=>0)
-      xml.dlc do
-        xml.header do
-          xml.generator do
-            xml.app(DLC.encode("Ruby DLC API (kedakai)"))
-            xml.version(DLC.encode(DLC::Api[:version]))
-            xml.url(DLC.encode(settings.url))
-          end
-          xml.tribute do
-            xml.name(DLC.encode(settings.name))
-          end
-          xml.dlcxmlversion(DLC.encode('20_02_2008'))
-        end
-        xml.content do
-          package = {:name => DLC.encode(@name)}
-          package[:passwords] = DLC.encode(@passwords.collect{|pw| "\"#{pw}\""}.join(",")) if @passwords.length != 0
-          package[:comment] = DLC.encode(@comment) if @comment != ""
-          package[:category] = DLC.encode(@category) if @category != ""
-          xml.package(package) do
-            @links.each do |link|
-              xml.file do
-                xml.url(DLC.encode(link[:url]))
-                xml.filename(DLC.encode(link[:filename]))
-                xml.size(DLC.encode(link[:size]))
-              end
-            end
-          end
-        end
-      end
+      xml = "<dlc>
+      	<header>
+      		<generator>
+      			<app>#{DLC.encode('Ruby DLC API (kedakai)')}</app>
+      			<version>#{DLC.encode(DLC::Api[:version])}</version>
+      			<url>#{DLC.encode(settings.url)}</url>
+      		</generator>
+      		<tribute>
+      			<name>#{DLC.encode(settings.name)}</name>
+      		</tribute>
+      		<dlcxmlversion>#{DLC.encode('20_02_2008')}</dlcxmlversion>
+      	</header>
+      	<content>
+      		<package name=\"#{DLC.encode(@name)}\" comment=\"#{DLC.encode(@comment)}\" category=\"#{DLC.encode(@category)}\" passwords=\"#{DLC.encode(@passwords.collect{|pw| '\"#{pw}\"'}.join(','))}\">
+      		#{@links.collect{|link| "<file><url>#{DLC.encode(link[:url])}</url><filename>#{DLC.encode(link[:filename])}</filename><size>#{DLC.encode(link[:size])}</size></file>"}.join}
+      		</package>
+      	</content>
+      </dlc>"
       
       # Lets get a key/encoded key pair
       begin
@@ -271,27 +270,41 @@ module DLC
       rescue NoKeyCachedError
         # Generate a key
         expires = 3600
-        key = Digest::MD5.hexdigest(Time.now.to_i.to_s+"salty salty"+rand(100000).to_s)[0..15]
+        key = Digest::MD5.hexdigest(Time.now.to_i.to_s+"GrrrAARRGG!!"+rand(100000).to_s)[0..15]
         begin
-          if Net::HTTP.post_form(URI.parse(DLC::Api[:service_urls][rand(DLC::Api[:service_urls].length)]),{
+          res = Net::HTTP.post_form(URI.parse(DLC::Api[:service_urls][rand(DLC::Api[:service_urls].length)]),{
             :data    => key, # A random key
             :lid     => DLC.encode([settings.url,settings.email,expires].join("_")), # Details about the generator of the DLC
             :version => DLC::Api[:version],
             :client  => "rubydlc"
-          }).body =~ /^<rc>(.+)<\/rc><rcp>(.+)<\/rcp>$/
+          })
+          
+          if res.body =~ /<rc>(.+)<\/rc><rcp>(.+)<\/rcp>$/
+            key = $2
             encoded_key = $1
-            # What is the second part?!
             settings.set_keycache(key, encoded_key, expires)
           else
-            raise ServerNotRespondingError
+            raise ServerNotRespondingError, "The DLC service is sending a malformed response. I can't make your DLC at the moment."
           end
         rescue
           raise ServerNotRespondingError, "The DLC service is not responding in the expected way. Try again later."
         end
       end
-
-      b64 = DLC.encode(xml.target!)
-      DLC.encode(Aes.encrypt_buffer(128,"CBC",key,key,b64.ljust((b64.length/16).ceil*16,"\000")))+encoded_key
+      
+      b64 = DLC.encode(xml)
+      
+      cipher = OpenSSL::Cipher::Cipher.new('aes-128-cbc')
+      cipher.encrypt
+      cipher.iv = key
+      cipher.key = key
+      
+      crypt = cipher.update(
+        b64.ljust((b64.length/16).ceil*16,"\000") # pad to a multiple of 16 bytes, with 0s
+      )
+      
+      crypt << cipher.final
+      
+      DLC.encode(crypt)+encoded_key
     end
     
     # Gives some useful information when people use the library from irb
@@ -305,9 +318,9 @@ module DLC
   # For when a DLC is requested without settings set
   class NoGeneratorDetailsError < StandardError; end
   # For when the keycache is accessed and no valid key is available
-  class NoKeyCachedError < StandardError; end
+  class NoKeyCachedError < RuntimeError; end
   # For when the service is not responding in the expected manner
-  class ServerNotRespondingError < StandardError; end  
+  class ServerNotRespondingError < RuntimeError; end  
   
   private
   def self.encode(string)
